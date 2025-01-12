@@ -8,68 +8,32 @@ class Transform():
         self.e2 = 2 * self.f - self.f ** 2  # eccentricity squared
 
         self.ref_lla = [10.87050, 106.802, 0]
+    
+    def enu_to_wgs84(self, enu):
+        lat_origin_rad = np.deg2rad(self.ref_lla[0])
+        lon_origin_rad = np.deg2rad(self.ref_lla[1])
 
-    def lla_to_ecef(self, lat, lon, alt):
-        lat = np.deg2rad(lat)
-        lon = np.deg2rad(lon)
+        delta_lat = enu[1] / self.a
+        delta_lon = enu[0] / (self.a * np.cos(lat_origin_rad))
 
-        N = self.a / np.sqrt(1 - self.e2 * np.sin(lat) ** 2)
+        return [np.rad2deg(lat_origin_rad + delta_lat), np.rad2deg(lon_origin_rad + delta_lon), 0]
 
-        X = (N + alt) * np.cos(lat) * np.cos(lon)
-        Y = (N + alt) * np.cos(lat) * np.sin(lon)
-        Z = (N * (1 - self.e2) + alt) * np.sin(lat)
+    def wgs84_to_enu(self, lla):
+        lat_origin_rad = np.deg2rad(self.ref_lla[0])
+        lon_origin_rad = np.deg2rad(self.ref_lla[1])
+        lat_rad = np.deg2rad(lla[0])
+        lon_rad = np.deg2rad(lla[1])
 
-        return np.array([X, Y, Z])
+        delta_lat = lat_rad - lat_origin_rad
+        delta_lon = lon_rad - lon_origin_rad
 
-    def ecef_to_ned(self, ecef):
-        ref_ecef = self.lla_to_ecef(*self.ref_lla)
-        dX = ecef - ref_ecef
+        return [self.a * np.cos(lat_origin_rad) * delta_lon, self.a * delta_lat, 0]
 
-        lat, lon = np.deg2rad(self.ref_lla[0]), np.deg2rad(self.ref_lla[1])
-        R = np.array([[-np.sin(lat) * np.cos(lon), -np.sin(lat) * np.sin(lon), np.cos(lat)],
-                    [-np.sin(lon), np.cos(lon), 0],
-                    [-np.cos(lat) * np.cos(lon), -np.cos(lat) * np.sin(lon), -np.sin(lat)]])
 
-        ned = R @ dX
-        return ned
-
-    def ned_to_ecef(self, ned):
-        ref_ecef = self.lla_to_ecef(*self.ref_lla)
-        lat, lon = np.deg2rad(self.ref_lla[0]), np.deg2rad(self.ref_lla[1])
-
-        R = np.array([[-np.sin(lat) * np.cos(lon), -np.sin(lat) * np.sin(lon), np.cos(lat)],
-                    [-np.sin(lon), np.cos(lon), 0],
-                    [-np.cos(lat) * np.cos(lon), -np.cos(lat) * np.sin(lon), -np.sin(lat)]])
-
-        dX = np.linalg.inv(R) @ ned
-        ecef = ref_ecef + dX
-
-        return ecef
-
-    def ecef_to_lla(self, ecef):
-        X, Y, Z = ecef
-        lon = np.arctan2(Y, X)
-
-        p = np.sqrt(X ** 2 + Y ** 2)
-        lat = np.arctan2(Z, p * (1 - self.e2))
-        alt = 0
-
-        for _ in range(5):
-            N = self.a / np.sqrt(1 - self.e2 * np.sin(lat) ** 2)
-            alt = p / np.cos(lat) - N
-            lat = np.arctan2(Z, p * (1 - self.e2 * N / (N + alt)))
-
-        lat = np.rad2deg(lat)
-        lon = np.rad2deg(lon)
-
-        return np.array([lat, lon, alt])
-
-    def lla_to_ned(self, lla):
-        ecef = self.lla_to_ecef(*lla)
-        ned = self.ecef_to_ned(ecef)
-        return ned
-
-    def ned_to_lla(self, ned):
-        ecef = self.ned_to_ecef(ned)
-        lla = self.ecef_to_lla(ecef)
-        return lla
+if __name__ == '__main__':
+    transform = Transform()
+    lla = [10.86975,106.80233,0]
+    tmp = transform.wgs84_to_enu(lla)
+    print(tmp)
+    tmp = transform.enu_to_wgs84(tmp)
+    print(tmp)

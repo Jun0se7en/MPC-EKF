@@ -1,5 +1,4 @@
 import numpy as np
-import math
 
 class KinematicBicycleModel:
     def __init__(self, length_rear: float, delta_time: float):
@@ -13,15 +12,22 @@ class KinematicBicycleModel:
             slip_angle = 0
 
         else:
-            
-            slip_angle = np.degrees(np.arcsin(np.radians((angular_velocity * self.length_rear) / velocity)))
-            
-        new_x = x + velocity * np.cos(np.radians(heading + slip_angle)) * dt
+            tmp = np.radians((angular_velocity * self.length_rear) / velocity)
+            if tmp < -1:
+                tmp = -1
+            elif tmp > 1:
+                tmp = 1
+            slip_angle = np.arcsin(tmp)
+        
+        if heading < 0:
+            heading = -np.deg2rad(abs(heading))
+        else:
+            heading = np.deg2rad(heading)
 
-        new_y = y + velocity * np.sin(np.radians(heading + slip_angle)) * dt
+        new_x = x + velocity * np.cos(heading + slip_angle) * dt
+
+        new_y = y + velocity * np.sin(heading + slip_angle) * dt
 
         new_heading = heading + angular_velocity * dt
-
-        new_heading = math.atan2(math.sin(new_heading), math.cos(new_heading))
         
         return new_x, new_y, new_heading ,slip_angle
